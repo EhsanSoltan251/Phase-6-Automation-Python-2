@@ -59,6 +59,8 @@ def objectiveFunction():
     y = -4 * (last_shot_rate - 0.6) ** 2 + 1
     return y
 
+
+
 '''
     Takes a list of solutions and picks the best one based on the objective function
 ''' 
@@ -162,7 +164,7 @@ def optimizePV2(goal_shot_rate_min, goal_shot_rate_max, max_iterations):
         if new_fitness < fitness:
             direction = direction * -1
             caput(knob_pv, val, wait=True)
-            if iteration != 0 and step_size > max_step:
+            if iteration != 0 and step_size > min_step:
                 step_size -= 0.5
         else:
             val = new_val
