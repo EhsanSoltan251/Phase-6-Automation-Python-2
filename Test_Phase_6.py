@@ -1,4 +1,3 @@
-from epics import caget, caput, cainfo, ca
 import time
 
 shot_rate_pv = "PCT1402-01:mAChange"
@@ -8,22 +7,30 @@ last_shot_rate = -1
 fresh_shot_rate = False
 all_shot_rates = []
 
-#function to be called on shot rate PV change
-def onChange(pvname=shot_rate_pv, value=None, **kw):
-    global last_shot_rate
-    global fresh_shot_rate
+knob_pretend_val = 150
 
-    if last_shot_rate > 0:
-        last_shot_rate = value
-        fresh_shot_rate = True
+def caget(pv):
+    global knob_pretend_val
+    global knob_pv
+    if pv == knob_pv:
+        return knob_pretend_val
+
+def caput(pv, val, wait=True):
+    global knob_pretend_val
+    global knob_pv
+    if pv == knob_pv:
+        knob_pretend_val = val
+
+
         
 '''A test objective function instead of reading the shot rate from EPICS'''
-def testObjectiveFunction(solution):
+def objectiveFunction():
     global last_shot_rate
+    global knob_pretend_val
     global fresh_shot_rate
 
     #a function to rather crudely simulate the shot rate
-    last_shot_rate = -1.0/4 * (solution - 117.25) ** 2.0 + 0.6
+    last_shot_rate = -1.0/200 * (knob_pretend_val - 117.25) ** 2.0 + 0.6
 
     #shot rate is now positive
     last_positive_shot_rate = last_shot_rate
@@ -34,26 +41,6 @@ def testObjectiveFunction(solution):
     y = -4 * (last_positive_shot_rate - 0.6) ** 2 + 1
     return y
 
-
-''' the optimizer uses this to determine the desirability of each solution
-'''
-def objectiveFunction():
-    global last_shot_rate
-    global fresh_shot_rate
-    global all_shot_rates
-
-    #wait until the next positive shot rate
-    while not fresh_shot_rate: 
-          time.sleep(0.01)
-
-    #got fresh shot rate
-    all_shot_rates.append(last_shot_rate)
-    fresh_shot_rate = False
-    
-    '''output is just a parabola with max (1) at x = 0.6
-    ideally shot rate is 0.6 but 0.4-0.8 are acceptable'''
-    y = -4 * (last_shot_rate - 0.6) ** 2 + 1
-    return y
 
 '''
     The first optimization method, which essentially mimics what an operator would do manually
@@ -66,11 +53,8 @@ def objectiveFunction():
 def optimizePV_Standard(step, goal_shot_rate_min, goal_shot_rate_max, max_iterations):
 
     global all_shot_rates
+    global last_shot_rate
     all_shot_rates = []
-
-    #subscribe to the shot rate PV. every time it changes we call the above OnChange() function
-    shot_rate_channel = ca.create_channel(shot_rate_pv)
-    eventID = ca.create_subscription(shot_rate_channel, callback=onChange)
     
     done = False
     val = caget(knob_pv)
@@ -102,11 +86,12 @@ def optimizePV_Standard(step, goal_shot_rate_min, goal_shot_rate_max, max_iterat
             if last_three_in_range:
                 return
         
+        print("Iteration: ", iteration, " Knob val: ", knob_pretend_val, " Shot rate: ", last_shot_rate)
+
         iteration += 1
         if iteration > max_iterations:
             return
     
-        ca.clear_subscription(shot_rate_channel)
         print("Done tuning")
 
 '''
@@ -115,13 +100,12 @@ def optimizePV_Standard(step, goal_shot_rate_min, goal_shot_rate_max, max_iterat
 def optimizePV_DecreasingStep(min_step, max_step, goal_shot_rate_min, goal_shot_rate_max, max_iterations):
 
     global all_shot_rates
+    global knob_pretend_val
+    global last_shot_rate
+
     all_shot_rates = []
 
     step = max_step
-
-    #subscribe to the shot rate PV. every time it changes we call the above OnChange() function
-    shot_rate_channel = ca.create_channel(shot_rate_pv)
-    eventID = ca.create_subscription(shot_rate_channel, callback=onChange)
     
     done = False
     val = caget(knob_pv)
@@ -155,27 +139,19 @@ def optimizePV_DecreasingStep(min_step, max_step, goal_shot_rate_min, goal_shot_
             if last_three_in_range:
                 return
 
+        print("Iteration: ", iteration, " Knob val: ", knob_pretend_val, " Shot rate: ", last_shot_rate, " Step: ", step)
 
         iteration += 1
         if iteration > max_iterations:
             return
         
-    ca.clear_subscription(shot_rate_channel)
-    print("Done tuning")
+    print("Done tuning")    
 
 
-'''
-    The same as the first method, but takes average of multiple measurements of shot rate to account for fluctuations
-    Parameters:
-        measurements - how many measurements of the shot rate to take for each adjustment
-'''
 def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max, max_iterations, measurements):
     global all_shot_rates
+    global last_shot_rate
     all_shot_rates = []
-
-     #subscribe to the shot rate PV. every time it changes we call the above OnChange() function
-    shot_rate_channel = ca.create_channel(shot_rate_pv)
-    eventID = ca.create_subscription(shot_rate_channel, callback=onChange)
     
     done = False
     val = caget(knob_pv)
@@ -211,27 +187,16 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
                     last_three_in_range = False
             if last_three_in_range:
                 return
+            
+        print("Iteration: ", iteration, " Knob val: ", knob_pretend_val, " Shot rate: ", last_shot_rate)
         
         iteration += 1
         if iteration > max_iterations:
             return
-    
-        ca.clear_subscription(shot_rate_channel)
+
         print("Done tuning")
 
-def optimizePV4():
-    return
 
-
-
-
-#optimizePV(0.05, 0.4, 0.8, 200)
-        
-        
-
-
-
-
-
-
-
+#optimizePV_Standard(0.5, 0.55, 0.65, 100)
+#optimizePV_MultipleMeasurements(0.5, 0.55, 0.65, 300, 3)
+#optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
