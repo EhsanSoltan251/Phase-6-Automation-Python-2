@@ -37,7 +37,7 @@ def onChange(pvname=stage_2_injection_efficiency_pv, value=None, **kw):
 
 ''' 
     This function determines the desirability of our output. Since we are just trying
-    to maximize the injection efficiency, that's all we return
+    to maximize the injection efficiency, we just return it without modification
 '''
 def objectiveFunction():
     global got_new_injection_efficiency
@@ -77,6 +77,7 @@ def optimizeSteeringMagnet(pv_name, step, max_iterations):
                 return
         else:
             val = new_val
+            fitness = new_fitness
         
         iteration += 1
         if iteration > max_iterations:
