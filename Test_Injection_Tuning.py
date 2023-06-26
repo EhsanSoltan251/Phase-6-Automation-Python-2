@@ -1,4 +1,3 @@
-from epics import caget, caput, cainfo, ca
 import time
 
 stage_2_injection_efficiency_pv = "ICT1400-01:PCT1402-01:InjEff:fbk"
@@ -21,39 +20,44 @@ steering_magnets = [stv1, stv2, stv3, sth1, sth2, sth3]
 steering_magnet_increments = [stv1_increment, stv2_increment, stv3_increment,
                               sth1_increment, sth2_increment, sth3_increment]
 
-latest_injection_efficiency = 0
+pretend_steering_magnet_vals = [100000, 200000, 300000, 2000000, 300000, 600000]
 
-#whether we've gotten a new injection efficiency value
-got_new_injection_efficiency = False
+current_steering_magnet = stv1
 
-#function to be called on injection efficiency PV change
-def onChange(pvname=stage_2_injection_efficiency_pv, value=None, **kw):
-    global latest_injection_efficiency
-    global got_new_injection_efficiency
 
-    latest_injection_efficiency = value
-    got_new_injection_efficiency = True
+def caget(pv):
+    global steering_magnets
+    global steering_magnet_increments
+
+    if pv in steering_magnets:
+        return pretend_steering_magnet_vals[steering_magnets.index(pv)]
+
+
+def caput(pv, val, wait=True):
+    global steering_magnets
+    global pretend_steering_magnet_vals
+
+    if pv in steering_magnets:
+        pretend_steering_magnet_vals[steering_magnets.index(pv)] = val
 
 
 ''' 
     This function determines the desirability of our output. Since we are just trying
-    to maximize the injection efficiency, that's all we return
+    to maximize the injection efficiency, we just return it without modification
 '''
 def objectiveFunction():
-    global got_new_injection_efficiency
-    global latest_injection_efficiency
 
-    #wait until we get a new injection efficiency
-    while not got_new_injection_efficiency:
-        time.sleep(0.01)
+    total = 0
+    for val in pretend_steering_magnet_vals:
+        total += val / 100000
     
-    got_new_injection_efficiency = False #since we just used it, this value becomes stale
-    return latest_injection_efficiency
+    return total
 
 
 def optimizeSteeringMagnet(pv_name, step, max_iterations):
     
-    global latest_injection_efficiency
+    global current_steering_magnet
+    current_steering_magnet = pv_name
 
     done = False
     val = caget(pv_name)
@@ -74,17 +78,19 @@ def optimizeSteeringMagnet(pv_name, step, max_iterations):
 
             #if it's not the first iteration and the injection efficiency got worse, then we know we stepped over the maximum
             if iteration != 0:
+                print("Done tuning ", pv_name)
                 return
         else:
             val = new_val
+            fitness = new_fitness
+
+        print("magnet val: ", val, " direction ", direction)
         
         iteration += 1
         if iteration > max_iterations:
+            print("Done tuning ", pv_name)
             return
     
-        print("Done tuning " + str(pv_name))
-
-
 '''
     Tunes each magnet one by one
     Params:
@@ -93,12 +99,10 @@ def optimizeSteeringMagnet(pv_name, step, max_iterations):
 '''
 def performInjectionTuning(steering_magnet_pvs, step_sizes):
 
-    #subscribe to the injection efficiency PV. every time it changes we call the above OnChange() function
-    injection_efficiency_channel = ca.create_channel(stage_2_injection_efficiency_pv)
-    eventID = ca.create_subscription(injection_efficiency_channel, callback=onChange)
-
     for i in range(len(steering_magnet_pvs)):
-        optimizeSteeringMagnet(steering_magnet_pvs[i], step_sizes[i], 100)
+        optimizeSteeringMagnet(steering_magnet_pvs[i], step_sizes[i], 10)
+        print("Pretend injection efficiency: ", objectiveFunction())
 
     print("Done tuning all steering magnets")
-    ca.clear_subscription(injection_efficiency_channel) #unsubscribe from pv
+
+performInjectionTuning(steering_magnets, steering_magnet_increments)
