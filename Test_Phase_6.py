@@ -1,4 +1,5 @@
 import time
+import sys
 
 shot_rate_pv = "PCT1402-01:mAChange"
 knob_pv = "PHS1032-06:degree"
@@ -38,7 +39,7 @@ def objectiveFunction():
     fresh_shot_rate = False
     
     #output is just a parabola with maximum (1) at x = 0.6 ideally shot rate is 0.6 but 0.4-0.8 are acceptable
-    y = -4 * (last_positive_shot_rate - 0.6) ** 2 + 1
+    y = -4.0 * (last_positive_shot_rate - 0.6) ** 2 + 1
     return y
 
 
@@ -195,6 +196,22 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
             return
 
         print("Done tuning")
+
+
+arg = int(sys.argv[1])
+
+if arg == 1:
+    print("Starting standard tuning algorithm")
+    optimizePV_Standard(0.5, 0.55, 0.65, 100)
+if arg == 2:
+    print("Starting tuning algorithm with multiple measurements")
+    optimizePV_MultipleMeasurements(0.5, 0.55, 0.65, 300, 3)
+if arg == 3:
+    print("Starting tuning algorithm with decreasing step")
+    optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
+
+print("Tuning complete")
+
 
 
 #optimizePV_Standard(0.5, 0.55, 0.65, 100)

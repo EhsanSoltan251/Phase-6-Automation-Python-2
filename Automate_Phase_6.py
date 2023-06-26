@@ -1,5 +1,6 @@
 from epics import caget, caput, cainfo, ca
 import time
+import sys
 
 shot_rate_pv = "PCT1402-01:mAChange"
 knob_pv = "PHS1032-06:degree"
@@ -219,13 +220,21 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
         ca.clear_subscription(shot_rate_channel)
         print("Done tuning")
 
-def optimizePV4():
-    return
 
 
+arg = int(sys.argv[1])
 
+if arg == 1:
+    print("Starting standard tuning algorithm")
+    optimizePV_Standard(0.5, 0.55, 0.65, 100)
+if arg == 2:
+    print("Starting tuning algorithm with multiple measurements")
+    optimizePV_MultipleMeasurements(0.5, 0.55, 0.65, 300, 3)
+if arg == 3:
+    print("Starting tuning algorithm with decreasing step")
+    optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
 
-#optimizePV(0.05, 0.4, 0.8, 200)
+print("Tuning complete")
         
         
 
