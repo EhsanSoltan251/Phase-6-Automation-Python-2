@@ -2,8 +2,16 @@ from epics import caget, caput, cainfo, ca
 import time
 import sys
 
+
+
+#change this to the output PV you want to optimize based off (check the keys of the outputs dictionary)
 shot_rate_pv = "PCT1402-01:mAChange"
+
 knob_pv = "PHS1032-06:degree"
+
+#the script adjusts values based on which PV you picked above
+outputs = {"PCT1402-01:mAChange": {"best": 0.6, "min": 0.55, "max": 0.65},
+           "PCT2403-01:mABR:fbk": {"best": 1.6, "min": 1.3, "max": 2.0}}
 
 last_shot_rate = -1
 fresh_shot_rate = False
@@ -53,7 +61,7 @@ def objectiveFunction():
     
     '''output is just a parabola with max (1) at x = 0.6
     ideally shot rate is 0.6 but 0.4-0.8 are acceptable'''
-    y = -4 * (last_shot_rate - 0.6) ** 2 + 1
+    y = -4 * (last_shot_rate - outputs["shot_rate_pv"]["best"]) ** 2 + 1
     return y
 
 '''
@@ -282,17 +290,21 @@ def optimizePV_MultipleMeasureMentsDecreasingStep(min_step, max_step, step_decre
 
 arg = int(sys.argv[1])
 
+best = outputs["shot_rate_pv"]["best"]
+minimum = outputs["shot_rate_pv"]["min"]
+maximum = outputs["shot_rate_pv"]["max"]
+
 if arg == 1:
     print("Starting standard tuning algorithm")
-    optimizePV_Standard(0.5, 0.55, 0.65, 100)
+    optimizePV_Standard(0.5, minimum, maximum, 100)
 if arg == 2:
     print("Starting tuning algorithm with multiple measurements")
-    optimizePV_MultipleMeasurements(0.5, 0.55, 0.65, 300, 3)
+    optimizePV_MultipleMeasurements(0.5, minimum, maximum, 300, 3)
 if arg == 3:
     print("Starting tuning algorithm with decreasing step")
-    optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
+    optimizePV_DecreasingStep(0.5, 2.0, minimum, maximum, 100)
 if arg == 4:
-    optimizePV_MultipleMeasureMentsDecreasingStep(0.5, 1.5, 0.5, 0.55, 0.65, 200, 3)
+    optimizePV_MultipleMeasureMentsDecreasingStep(0.5, 1.5, 0.5, minimum, maximum, 200, 3)
 
 print("Tuning complete")
         
