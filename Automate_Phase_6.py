@@ -14,7 +14,7 @@ def onChange(pvname=shot_rate_pv, value=None, **kw):
     global last_shot_rate
     global fresh_shot_rate
 
-    if last_shot_rate > 0:
+    if value > 0:
         last_shot_rate = value
         fresh_shot_rate = True
         
@@ -217,8 +217,66 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
         if iteration > max_iterations:
             return
     
-        ca.clear_subscription(shot_rate_channel)
-        print("Done tuning")
+    ca.clear_subscription(shot_rate_channel)
+    print("Done tuning")
+
+
+def optimizePV_MultipleMeasureMentsDecreasingStep(min_step, max_step, step_decrease, goal_shot_rate_min, goal_shot_rate_max, max_iterations, measurements):
+    global all_shot_rates
+    all_shot_rates = []
+    step = max_step
+    iteration = 0
+
+     #subscribe to the shot rate PV. every time it changes we call the above OnChange() function
+    shot_rate_channel = ca.create_channel(shot_rate_pv)
+    eventID = ca.create_subscription(shot_rate_channel, callback=onChange)
+    
+    done = False
+    val = caget(knob_pv)
+    direction = -1
+
+    caput(knob_pv, val, wait=True)
+    sum = 0
+    for i in range(measurements):
+        sum += objectiveFunction()
+    fitness = sum / measurements
+
+    while not done:
+
+        new_val = val + step * direction
+        caput(knob_pv, new_val, wait=True)
+        sum = 0
+        for i in range(measurements):
+            sum += objectiveFunction()
+        new_fitness = sum / measurements
+
+        if new_fitness < fitness:
+            direction = direction * -1
+            if step > min_step:
+                step -= step_decrease
+
+            caput(knob_pv, val, wait=True)
+        else:
+            val = new_val
+            fitness = new_fitness
+        
+        if len(all_shot_rates) >= 3:
+            last_three_in_range = True
+            for shot in all_shot_rates[-3:]:
+                if shot < goal_shot_rate_min or shot > goal_shot_rate_max:
+                    last_three_in_range = False
+            if last_three_in_range:
+                return
+        
+        iteration += 1
+        if iteration > max_iterations:
+            return
+    
+        
+    
+    ca.clear_subscription(shot_rate_channel)
+    print("Done tuning")
+
 
 
 
@@ -233,6 +291,8 @@ if arg == 2:
 if arg == 3:
     print("Starting tuning algorithm with decreasing step")
     optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
+if arg == 4:
+    optimizePV_MultipleMeasureMentsDecreasingStep(0.5, 1.5, 0.5, 0.55, 0.65, 200, 3)
 
 print("Tuning complete")
         
