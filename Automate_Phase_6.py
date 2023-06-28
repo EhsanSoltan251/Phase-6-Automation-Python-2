@@ -102,6 +102,8 @@ def optimizePV_Standard(step, goal_shot_rate_min, goal_shot_rate_max, max_iterat
         else:
             val = new_val
             fitness = new_fitness
+
+        print("iteration: ", iteration, " knob value: ", val, " output value: ", all_shot_rates[len(all_shot_rates) - 1])
         
         if len(all_shot_rates) >= 3:
             last_three_in_range = True
@@ -155,6 +157,8 @@ def optimizePV_DecreasingStep(min_step, max_step, goal_shot_rate_min, goal_shot_
         else:
             val = new_val
             fitness = new_fitness
+
+        print("iteration: ", iteration, " knob value: ", val, " output value: ", all_shot_rates[len(all_shot_rates) - 1])
         
         if len(all_shot_rates) >= 3:
             last_three_in_range = True
@@ -212,6 +216,8 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
         else:
             val = new_val
             fitness = new_fitness
+
+        print("iteration: ", iteration, " knob value: ", val, " output value: ", all_shot_rates[len(all_shot_rates) - 1])
         
         if len(all_shot_rates) >= 3:
             last_three_in_range = True
@@ -267,6 +273,8 @@ def optimizePV_MultipleMeasureMentsDecreasingStep(min_step, max_step, step_decre
         else:
             val = new_val
             fitness = new_fitness
+
+        print("iteration: ", iteration, " knob value: ", val, " output value: ", all_shot_rates[len(all_shot_rates) - 1])
         
         if len(all_shot_rates) >= 3:
             last_three_in_range = True
@@ -290,9 +298,9 @@ def optimizePV_MultipleMeasureMentsDecreasingStep(min_step, max_step, step_decre
 
 arg = int(sys.argv[1])
 
-best = outputs["shot_rate_pv"]["best"]
-minimum = outputs["shot_rate_pv"]["min"]
-maximum = outputs["shot_rate_pv"]["max"]
+best = outputs[shot_rate_pv]["best"]
+minimum = outputs[shot_rate_pv]["min"]
+maximum = outputs[shot_rate_pv]["max"]
 
 if arg == 1:
     print("Starting standard tuning algorithm")

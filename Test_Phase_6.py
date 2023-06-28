@@ -1,8 +1,12 @@
 import time
 import sys
 
-shot_rate_pv = "PCT1402-01:mAChange"
+shot_rate_pv = "PCT2403-01:mABR:fbk"
 knob_pv = "PHS1032-06:degree"
+
+#the script adjusts values based on which PV you picked above
+outputs = {"PCT1402-01:mAChange": {"best": 0.6, "min": 0.55, "max": 0.65},
+           "PCT2403-01:mABR:fbk": {"best": 1.6, "min": 1.4, "max": 1.8}}
 
 last_shot_rate = -1
 fresh_shot_rate = False
@@ -31,15 +35,15 @@ def objectiveFunction():
     global fresh_shot_rate
 
     #a function to rather crudely simulate the shot rate
-    last_shot_rate = -1.0/200 * (knob_pretend_val - 117.25) ** 2.0 + 0.6
+    last_shot_rate = -1.0/200 * (knob_pretend_val - 117.25) ** 2.0 + outputs[shot_rate_pv]["best"]
 
     #shot rate is now positive
     last_positive_shot_rate = last_shot_rate
     all_shot_rates.append(last_positive_shot_rate)
     fresh_shot_rate = False
     
-    #output is just a parabola with maximum (1) at x = 0.6 ideally shot rate is 0.6 but 0.4-0.8 are acceptable
-    y = -4.0 * (last_positive_shot_rate - 0.6) ** 2 + 1
+    #output is just a parabola with maximum (1) at outputs[shot_rate_pv]['best']
+    y = -4.0 * (last_positive_shot_rate - outputs[shot_rate_pv]["best"]) ** 2 + 1
     return y
 
 
@@ -93,7 +97,7 @@ def optimizePV_Standard(step, goal_shot_rate_min, goal_shot_rate_max, max_iterat
         if iteration > max_iterations:
             return
     
-        print("Done tuning")
+    print("Done tuning")
 
 '''
     The same as the first method, but with a relatively large step size that decreases
@@ -180,6 +184,9 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
         else:
             val = new_val
             fitness = new_fitness
+
+
+        print("iteration: ", iteration, " knob value: ", val, " output value: ", all_shot_rates[len(all_shot_rates) - 1])
         
         if len(all_shot_rates) >= 3:
             last_three_in_range = True
@@ -188,32 +195,30 @@ def optimizePV_MultipleMeasurements(step, goal_shot_rate_min, goal_shot_rate_max
                     last_three_in_range = False
             if last_three_in_range:
                 return
-            
-        print("Iteration: ", iteration, " Knob val: ", knob_pretend_val, " Shot rate: ", last_shot_rate)
         
         iteration += 1
         if iteration > max_iterations:
             return
 
-        print("Done tuning")
+    print("Done tuning")
 
 
-arg = int(sys.argv[1])
 
-if arg == 1:
-    print("Starting standard tuning algorithm")
-    optimizePV_Standard(0.5, 0.55, 0.65, 100)
-if arg == 2:
-    print("Starting tuning algorithm with multiple measurements")
-    optimizePV_MultipleMeasurements(0.5, 0.55, 0.65, 300, 3)
-if arg == 3:
-    print("Starting tuning algorithm with decreasing step")
-    optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
+
+best = outputs[shot_rate_pv]["best"]
+minimum = outputs[shot_rate_pv]["min"]
+maximum = outputs[shot_rate_pv]["max"]
+
+
+#print("Starting standard tuning algorithm")
+#optimizePV_Standard(0.5, minimum, maximum, 100)
+
+print("Starting tuning algorithm with multiple measurements")
+optimizePV_MultipleMeasurements(0.5, minimum, maximum, 300, 3)
+
+#print("Starting tuning algorithm with decreasing step")
+#optimizePV_DecreasingStep(0.5, 2.0, minimum, maximum, 100)
 
 print("Tuning complete")
 
 
-
-#optimizePV_Standard(0.5, 0.55, 0.65, 100)
-#optimizePV_MultipleMeasurements(0.5, 0.55, 0.65, 300, 3)
-#optimizePV_DecreasingStep(0.5, 2.0, 0.55, 0.65, 100)
