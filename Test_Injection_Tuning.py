@@ -2,6 +2,7 @@ import time
 import random
 import math
 import sys
+import matplotlib.pyplot as plt
 
 stage_2_injection_efficiency_pv = "ICT1400-01:PCT1402-01:InjEff:fbk"
 
@@ -110,6 +111,9 @@ def optimizeSteeringMagnetVariation1(pv_name, step, max_iterations):
             print("Reached max iteration - terminating algorithm")
             return
         
+    inj_effs = [i[1] for i in magnet_val_and_inj_eff]
+    plt.plot(inj_effs)
+    plt.show()
     
     done_clipping = False
     worst_magnet = "left"
@@ -133,6 +137,10 @@ def optimizeSteeringMagnetVariation1(pv_name, step, max_iterations):
 
     best_magnet_val = magnet_val_and_inj_eff[math.floor(len(magnet_val_and_inj_eff)/2)][0]
     caput(pv_name, best_magnet_val, wait=True)
+
+    inj_effs = [i[1] for i in magnet_val_and_inj_eff]
+    plt.plot(inj_effs)
+    plt.show()
         
     
   
@@ -241,7 +249,7 @@ def optimizeSteeringMagnetVariation2(pv_name, step, max_iterations):
         sum_weights += val[1]
         prod_xweights += (i + 1) * val[1]
     
-    weighted_mean_center = int(prod_xweights / sum_weights - 1)
+    weighted_mean_center = int(round(prod_xweights / sum_weights - 1))
     if weighted_mean_center < 0:
         weighted_mean_center = 0
     
@@ -249,11 +257,16 @@ def optimizeSteeringMagnetVariation2(pv_name, step, max_iterations):
 
     caput(pv_name, best_magnet_val, wait=True)
         
+    inj_effs = [i[1] for i in magnet_val_and_inj_eff]
+
+    plt.plot(inj_effs)
+    plt.show()
     
+
     print("Done tuning " + str(pv_name) + ", final magnet value: " + str(best_magnet_val))
 
 
-    
+'''
 arg1 = str(sys.argv[1])
 arg2 = int(sys.argv[2])
 
@@ -265,3 +278,6 @@ if arg2 == 1:
     optimizeSteeringMagnetVariation1(magnet_name, magnet_to_increment[magnet_name], 100)
 if arg2 == 2:
     optimizeSteeringMagnetVariation2(magnet_name, magnet_to_increment[magnet_name], 100)
+'''
+
+optimizeSteeringMagnetVariation1("STV1400-01:adc", magnet_to_increment["STV1400-01:adc"], 100)
